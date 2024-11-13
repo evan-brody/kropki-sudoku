@@ -70,7 +70,7 @@ def solve_kropki(file_name):
     # 9x9
     board = np.loadtxt(file_name, delimiter=' ', usecols=range(BOARD_DIMS[1]))
 
-        # 9x8
+    # 9x8
     horiz_dots = np.loadtxt(
         file_name, delimiter=' ', skiprows=BOARD_DIMS[0], usecols=range(BOARD_DIMS[1])
     )
@@ -87,7 +87,6 @@ def main():
     except Exception as exc:
         print(f"Failed to read file.")
         print(f"{exc}")
-    solve_kropki(sys.argv[1])
 
 if __name__ == "main":
     main()
