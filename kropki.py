@@ -58,33 +58,27 @@ def is_valid_kropki(board, vert_dots, horiz_dots):
     return True
 
 def count_valid_values(board, i, j):
-    
+    pass
 
 def select_square_to_fill(board):
-    
+    pass
 
 def solve_kropki_board(board, vert_dots, horiz_dots):
     if all(board): return board # Complete assignment. Must be valid
-
-
-
 
 def solve_kropki(file_name):
     # 9x9
     board = np.loadtxt(file_name, delimiter=' ', usecols=range(BOARD_DIMS[1]))
 
+        # 9x8
+    horiz_dots = np.loadtxt(
+        file_name, delimiter=' ', skiprows=BOARD_DIMS[0], usecols=range(BOARD_DIMS[1])
+    )
+
     # 8x9
     vert_dots = np.loadtxt(
-        file_name, delimiter=' ', skiprows=BOARD_DIMS[0], usecols=range(BOARD_DIMS[1] - 1)
+        file_name, delimiter=' ', skiprows=BOARD_DIMS[0] * 2, usecols=range(BOARD_DIMS[1] - 1)
     )
-
-    # 9x8
-    horiz_dots = np.loadtxt(
-        file_name, delimiter=' ', skiprows=BOARD_DIMS[0]*2, usecols=range(BOARD_DIMS[1])
-    )
-
-
-
 
 def main():
     try:
