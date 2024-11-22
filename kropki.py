@@ -121,6 +121,7 @@ def count_valid_values(board, i, j) -> int:
 
 def select_square_to_fill(board):
     pass
+    pass
 
 def solve_kropki_board(board):
     if all(board.nums): return board # Complete assignment. Must be valid
@@ -152,7 +153,6 @@ def main():
     except Exception as exc:
         print(f"Failed to read file.")
         print(f"{exc}")
-    solve_kropki(sys.argv[1])
 
 if __name__ == "__main__":
     main()
