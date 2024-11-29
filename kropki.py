@@ -2,6 +2,7 @@
 # @author Evan Brody
 # @brief Solves a Kropki Sudoku board
 
+import os
 import sys
 import random
 import numpy as np
@@ -161,47 +162,12 @@ def check_dot_constraints_at(board, i, j):
     
     return True
 
-# i in [0, 8], j in [0, 7]
-# Checks that the vertical dot at position i, j and
-# the horizontal dot at position j, i both have their constraints satisfied
-def check_dot_constraints_for_dot(board, i, j):
-    # Checking vertical dot constraints
-
-    # A vertical dot at (i, j) applies constraints to
-    # board positions (i, j) and (i, j + 1)
-    if not Board.DOT_CONSTRAINTS[board.vert_dots[i, j]](board.nums[i, j], board.nums[i, j + 1]):
-        return False
-    
-    # Checking horizontal dot constraints
-
-    # A horizontal dot at (j, i) applies constraints to
-    # board positions (j, i) and (j + 1, i)
-    if not Board.DOT_CONSTRAINTS[board.horiz_dots[j, i]](board.nums[j, i], board.nums[j + 1, i]):
-        return False
-    
-    return True
-
 def is_valid_at(board, i, j):
     if not check_dot_constraints_at(board, i, j):
         return False
     
     if not check_unique_constraints_at(board.nums, i, j):
         return False
-    
-    return True
-
-# Checks if the given board satisfies the constraints
-# specified by the dots
-def is_valid_kropki(board: Board):
-    # Checking row, column, and grid constraints for unique digits
-    if not check_unique_constraints(board.nums):
-        return False
-    
-    # Checking that each dot has its constraints satisfied
-    # i in [0, 8], j in [0, 7]
-    for i, j in product(range(Board.DIMS[0]), range(Board.DIMS[1] - 1)):
-        if not check_dot_constraints_for_dot(board, i, j):
-            return False
     
     return True
 
@@ -244,8 +210,8 @@ def get_degree(board, i, j):
 
 def get_valid_domain(board, i, j):
     if board.nums[i, j]:
-        print("WOAH!")
-        while True: pass
+        raise Exception("Domain requested for assigned variable.")
+    
     start_valid = [1, 2, 3, 4, 5, 6, 7, 8, 9]
     final_valid = set(start_valid)
     for number in start_valid:
@@ -343,7 +309,15 @@ def solve_kropki(file_name):
     if solved is False:
         print("FAILURE")
     else:
-        print(solved.nums)
+        name, ext = file_name.split('.')
+        ext = '.' + ext
+        with open("Output" + name[-1] + ext, 'w') as output_file:
+            # Text processing
+            output_str = np.array2string(solved.nums) # Convert array to string
+            output_str = output_str.translate({ord(c) : None for c in "[]"}) # Remove array delimiters
+            output_str = '\n'.join([ line.strip() for line in output_str.splitlines() ]) # Strip spaces
+
+            output_file.write(output_str)
 
 if __name__ == "__main__":
     try:
