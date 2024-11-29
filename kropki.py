@@ -6,15 +6,12 @@ import sys
 import random
 import numpy as np
 from itertools import product
+from copy import deepcopy
 
 # Vertical dot: |
 #               O
 #               |
 # Horizontal dot: -o-
-
-class Board:
-    DIMS = (9, 9)
-    __slots__ = ["nums", "white_dots", "black_dots"]
 
 def no_dot_constraint(a, b): return True
 
@@ -24,23 +21,39 @@ def white_dot_constrant(a, b):
 def black_dot_constraint(a, b):
     return a == b * 2 or a * 2 == b
 
+# Checks that each digit 1 - 9 is only used once within the array
+def array_all_diff(array):
+    digit_count = [0] * 10
+    for num in array:
+        # Check if a digit other than zero is duplicated
+        if num and digit_count[num]: return False
+        digit_count[num] += 1
+    
+    return True
+
+# Checks that the AllDiff constraint is satisfied at row i
+def check_row_constraint_at(nums, i):
+    return array_all_diff(nums[i])
+
 # Checks that each row has exactly one of each digit 1 - 9
 def check_row_constraint(nums):
-    for row in nums:
-        digit_count = [0] * 10
-        for num in row:
-            # Check if a digit other than zero is duplicated
-            if num and digit_count[num]: return False
-            digit_count[num] += 1
+    for i in range(nums.shape[0]):
+        if not check_row_constraint_at(nums, i):
+            return False
+
+    return True
+
+# Checks that the AllDiff constraint is satisfied at column j
+def check_column_constraint_at(nums, j):
+    return array_all_diff(nums.T[j])
 
 # Checks that each column has exactly one of each digit 1 - 9
 def check_column_constraint(nums):
-    for col in nums.T:
-        digit_count = [0] * 10
-        for num in col:
-            # Check if a digit other than zero is duplicated
-            if num and digit_count[num]: return False
-            digit_count[num] += 1
+    for j in range(nums.shape[1]):
+        if not check_column_constraint_at(nums, j):
+            return False
+    
+    return True
 
 # Checks that each 3x3 grid has exactly one of each digit 1 - 9
 def check_grid_constraint(nums):
@@ -51,46 +64,128 @@ def check_grid_constraint(nums):
         # m and n are the indices for our 3x3 grid
         for m, n in product(range(i, i + 3), range(j, j + 3)):
             # Check if a digit other than zero is duplicated
-            if nums[i, j] and digit_count[nums[i, j]]: return False
-            digit_count[nums[i, j]] += 1
+            if nums[m, n] and digit_count[nums[m, n]]: return False
+            digit_count[nums[m, n]] += 1
+    
+    return True
 
-# Checks the row, column, and grid constraints
-def check_unique_constraint(nums):
-    valid = True
-    valid = valid and check_row_constraint(nums)
-    valid = valid and check_column_constraint(nums)
-    valid = valid and check_grid_constraint(nums)
+# Checks that the grid AllDiff constraint is satisfied for the
+# grid that contains position m, n
+def check_grid_constraint_at(nums, m, n):
+    # Indices m, n are in grid index m div 3, n div 3
+    i, j = m // 3, n // 3
+    i *= 3; j *= 3 # Starting indices for that grid
 
-    return valid
+    digit_count = [0] * 10
+    for ii, jj in product(range(i, i + 3), range(j, j + 3)):
+        # Check if a digit other than zero is duplicated
+        if nums[ii, jj] and digit_count[nums[ii, jj]]: return False
+        digit_count[nums[ii, jj]] += 1
 
-class Dot:
+    return True
+
+class Board:
+    __slots__ = ["nums", "vert_dots", "horiz_dots"]
+
+    DIMS = (9, 9)
     NO_DOT = 0
     WHITE_DOT = 1
     BLACK_DOT = 2
     # When indexed at *_DOT, this triple
     # returns the constraint associated with
     # that dot
-    CONSTRAINTS = (
+    DOT_CONSTRAINTS = (
         no_dot_constraint,
         white_dot_constrant,
         black_dot_constraint
     )
 
-# i in [0, 9], j in [0, 8]
-# Checks that the position at i, j satisfies all dot constraints
-def check_dot_constraints(board, i, j):
+    UNIQUE_CONSTRAINTS = (
+        check_row_constraint,
+        check_column_constraint,
+        check_grid_constraint
+    )
+
+def check_unique_constraints_at(nums, i, j):
+    if not check_row_constraint_at(nums, i):
+        return False
+    
+    if not check_column_constraint_at(nums, j):
+        return False
+    
+    if not check_grid_constraint_at(nums, i, j):
+        return False
+    
+    return True
+
+# Checks the row, column, and grid constraints
+def check_unique_constraints(nums):
+    valid = True
+    for constraint in Board.UNIQUE_CONSTRAINTS:
+        valid = valid and constraint(nums)
+
+    return valid
+
+def check_dot_constraints_at(board, i, j):
+    # A number at position i, j is constrained by dots at indices
+    # LEFT: i, j - 1; RIGHT: i, j (vertical dots)
+    # UP:   i - 1, j; DOWN:  i, j (horizontal dots)
+    
+    # Checking left
+    if j - 1 > 0 and board.nums[i, j - 1]:
+        if not Board.DOT_CONSTRAINTS[board.vert_dots[i, j - 1]](
+            board.nums[i, j], board.nums[i, j - 1]
+        ):
+            return False
+
+    # Checking right
+    if j + 1 < Board.DIMS[1] and board.nums[i, j + 1]:
+        if not Board.DOT_CONSTRAINTS[board.vert_dots[i, j]](
+            board.nums[i, j], board.nums[i, j + 1]
+        ):
+            return False
+    
+    # Checking top
+    if i - 1 > 0 and board.nums[i - 1, j]:
+        if not Board.DOT_CONSTRAINTS[board.horiz_dots[i - 1, j]](
+            board.nums[i, j], board.nums[i - 1, j]
+        ):
+            return False
+
+    # Checking bottom
+    if i + 1 < Board.DIMS[0] and board.nums[i + 1, j]:
+        if not Board.DOT_CONSTRAINTS[board.horiz_dots[i, j]](
+            board.nums[i, j], board.nums[i + 1, j]
+        ):
+            return False
+    
+    return True
+
+# i in [0, 8], j in [0, 7]
+# Checks that the vertical dot at position i, j and
+# the horizontal dot at position j, i both have their constraints satisfied
+def check_dot_constraints_for_dot(board, i, j):
     # Checking vertical dot constraints
 
     # A vertical dot at (i, j) applies constraints to
     # board positions (i, j) and (i, j + 1)
-    if not Dot.CONSTRAINTS[board.vert_dots[i, j]](board[i, j], board[i, j + 1]):
+    if not Board.DOT_CONSTRAINTS[board.vert_dots[i, j]](board.nums[i, j], board.nums[i, j + 1]):
         return False
     
     # Checking horizontal dot constraints
 
     # A horizontal dot at (j, i) applies constraints to
     # board positions (j, i) and (j + 1, i)
-    if not Dot.CONSTRAINTS[board.horiz_dots[j, i]](board[j, i], board[j + 1, i]):
+    if not Board.DOT_CONSTRAINTS[board.horiz_dots[j, i]](board.nums[j, i], board.nums[j + 1, i]):
+        return False
+    
+    return True
+
+def is_valid_at(board, i, j):
+    if not check_dot_constraints_at(board, i, j):
+        return False
+    
+    if not check_unique_constraints_at(board.nums, i, j):
         return False
     
     return True
@@ -99,59 +194,161 @@ def check_dot_constraints(board, i, j):
 # specified by the dots
 def is_valid_kropki(board: Board):
     # Checking row, column, and grid constraints for unique digits
-    if not check_unique_constraint(board.nums):
+    if not check_unique_constraints(board.nums):
         return False
     
-    # We iterate over each position in the board, checking that each satisfies all constraints
-    # i in [0, 9], j in [0, 8]
+    # Checking that each dot has its constraints satisfied
+    # i in [0, 8], j in [0, 7]
     for i, j in product(range(Board.DIMS[0]), range(Board.DIMS[1] - 1)):
-        # Checking vertical dot constraints
-
-        if not check_dot_constraints(board, i, j):
+        if not check_dot_constraints_for_dot(board, i, j):
             return False
     
     return True
 
+# Returns the degree of position i, j
+def get_degree(board, i, j):
+    degree = 0
+
+    # A number at position i, j is constrained by dots at indices
+    # LEFT: i, j - 1; RIGHT: i, j (vertical dots)
+    # UP:   i - 1, j; DOWN:  i, j (horizontal dots)
+    if j - 1 > 0: # Ensure index within range
+        # Left vertical dot
+        # If there is a vertical dot to the left, and the position
+        # to the left is unassigned
+        if board.vert_dots[i, j - 1] and not board.nums[i, j - 1]:
+            degree += 1
+    
+    if j + 1 < Board.DIMS[1]:
+        # Right vertical dot
+        # If there is a vertical dot to the right, and the position
+        # to the left is unassigned
+        if board.vert_dots[i, j] and not board.nums[i, j + 1]:
+            degree += 1
+    
+    if i - 1 > 0:
+        # Upper horizontal dot
+        # If there is a horizontal dot above, and the position
+        # above is unassigned
+        if board.horiz_dots[i - 1, j] and not board.nums[i - 1, j]:
+            degree += 1
+    
+    if i < Board.DIMS[0] - 1:
+        # Lower horizontal dot
+        # If there is a horizontal dot below, and the position
+        # below is unassigned
+        if board.horiz_dots[i, j] and not board.nums[i, j]:
+            degree += 1
+
+    return degree
+
+def get_valid_domain(board, i, j):
+    if board.nums[i, j]:
+        print("WOAH!")
+        while True: pass
+    start_valid = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+    final_valid = set(start_valid)
+    for number in start_valid:
+        board.nums[i, j] = number
+        if not is_valid_at(board, i, j):
+            final_valid.remove(number)
+    
+    board.nums[i, j] = 0
+    return final_valid
+
 # Returns the number of valid values for i, j given the current board constraints
 def count_valid_values(board, i, j) -> int:
-    count = 0
-    # possible in [1, 9]
-    for possible in range(1, 10):
-        
+    return len(get_valid_domain(board, i, j))
 
 def select_square_to_fill(board):
-    pass
+    selections = []
+
+    # Start with Minimum Remaining Values heuristic
+    selection_value_count = 10 # Each position can have, at most, 9 valid values
+    for i, j in product(range(0, 9), repeat=2):
+        if not board.nums[i, j]:
+            ij_value_count = count_valid_values(board, i, j)
+            if ij_value_count < selection_value_count:
+                selection_value_count = ij_value_count
+                selections = [(i, j)]
+            elif ij_value_count == selection_value_count:
+                selections.append((i, j))
+
+    # Tiebreak via degree heuristic
+    final_selections = []
+    max_degree = -1
+    for coord in selections:
+        coord_degree = get_degree(board, *coord)
+        if coord_degree > max_degree:
+            max_degree = coord_degree
+            final_selections = [coord]
+        elif coord_degree == max_degree:
+            final_selections.append(coord)
+    
+    # Arbitrary final tiebreak
+    return random.choice(final_selections)
+
+# Forward check detects some early failures after
+# an assignment to position i, j
+def forward_check(board, i, j):
+    # First check variables in the same row
+    for jj in range(Board.DIMS[1]):
+        if not board.nums[i, jj] and not count_valid_values(board, i, jj):
+            return False
+    
+    # Then in the same column
+    for ii in range(Board.DIMS[0]):
+        if not board.nums[ii, j] and not count_valid_values(board, ii, j):
+            return False
+    
+    # Then in the same grid
+    grid_i, grid_j = i // 3, j // 3
+    for ii, jj in product(range(grid_i, grid_i + 3), range(grid_j, grid_j + 3)):
+        if not board.nums[ii, jj] and not count_valid_values(board, ii, jj):
+            return False
+        
+    return True
 
 def solve_kropki_board(board):
-    if all(board.nums): return board # Complete assignment. Must be valid
-
+    if board.nums.all(): return board # Complete assignment. Must be valid
+    var = select_square_to_fill(board) # var is a tuple (i, j)
+    for value in get_valid_domain(board, *var):
+        board.nums[var] = value
+        if forward_check(board, *var): # Inference
+            result = solve_kropki_board(deepcopy(board))
+            if type(result) != bool: return result # False indicates failure
+        
+        board.nums[var] = 0 # Clear the assignment
+    
+    return False
 
 def solve_kropki(file_name):
     # 9x9
     board = Board()
-    board.nums = np.loadtxt(file_name, delimiter=' ', usecols=range(Board.DIMS[1]), max_rows=Board.DIMS[0])
+    board.nums = np.loadtxt(
+        file_name, dtype=int, delimiter=' ', usecols=range(Board.DIMS[1]), max_rows=Board.DIMS[0]
+    )
 
     # 8x9
     board.vert_dots = np.loadtxt(
-        file_name, delimiter=' ', skiprows=Board.DIMS[0] + 1, usecols=range(Board.DIMS[1] - 1), max_rows=Board.DIMS[0]
+        file_name, dtype=int, delimiter=' ', skiprows=Board.DIMS[0] + 1, usecols=range(Board.DIMS[1] - 1), max_rows=Board.DIMS[0]
     )
 
     # 9x8
     board.horiz_dots = np.loadtxt(
-        file_name, delimiter=' ', skiprows=Board.DIMS[0] * 2 + 2, usecols=range(Board.DIMS[1]), max_rows=Board.DIMS[0] - 1
+        file_name, dtype=int, delimiter=' ', skiprows=Board.DIMS[0] * 2 + 2, usecols=range(Board.DIMS[1]), max_rows=Board.DIMS[0] - 1
     )
 
-    solve_kropki_board(board)
+    solved = solve_kropki_board(board)
+    if solved is False:
+        print("FAILURE")
+    else:
+        print(solved.nums)
 
-
-
-def main():
+if __name__ == "__main__":
     try:
         with open(sys.argv[1]) as file:
             solve_kropki(sys.argv[1])
     except Exception as exc:
         print(f"Failed to read file.")
         print(f"{exc}")
-
-if __name__ == "__main__":
-    main()
