@@ -1,8 +1,7 @@
-# @file kropki.py
-# @author Evan Brody
-# @brief Solves a Kropki Sudoku board
+# @file     kropki.py
+# @author   Evan Brody
+# @brief    Solves a Kropki Sudoku board
 
-import os
 import sys
 import random
 import numpy as np
@@ -36,39 +35,9 @@ def array_all_diff(array):
 def check_row_constraint_at(nums, i):
     return array_all_diff(nums[i])
 
-# Checks that each row has exactly one of each digit 1 - 9
-def check_row_constraint(nums):
-    for i in range(nums.shape[0]):
-        if not check_row_constraint_at(nums, i):
-            return False
-
-    return True
-
 # Checks that the AllDiff constraint is satisfied at column j
 def check_column_constraint_at(nums, j):
     return array_all_diff(nums.T[j])
-
-# Checks that each column has exactly one of each digit 1 - 9
-def check_column_constraint(nums):
-    for j in range(nums.shape[1]):
-        if not check_column_constraint_at(nums, j):
-            return False
-    
-    return True
-
-# Checks that each 3x3 grid has exactly one of each digit 1 - 9
-def check_grid_constraint(nums):
-    # i, j in {0, 3, 6}
-    # i and j are the top left indices of our 3x3 grid
-    for i, j in product(range(0, 9, 3), repeat=2):
-        digit_count = [0] * 10
-        # m and n are the indices for our 3x3 grid
-        for m, n in product(range(i, i + 3), range(j, j + 3)):
-            # Check if a digit other than zero is duplicated
-            if nums[m, n] and digit_count[nums[m, n]]: return False
-            digit_count[nums[m, n]] += 1
-    
-    return True
 
 # Checks that the grid AllDiff constraint is satisfied for the
 # grid that contains position m, n
@@ -101,12 +70,6 @@ class Board:
         black_dot_constraint
     )
 
-    UNIQUE_CONSTRAINTS = (
-        check_row_constraint,
-        check_column_constraint,
-        check_grid_constraint
-    )
-
 def check_unique_constraints_at(nums, i, j):
     if not check_row_constraint_at(nums, i):
         return False
@@ -118,14 +81,6 @@ def check_unique_constraints_at(nums, i, j):
         return False
     
     return True
-
-# Checks the row, column, and grid constraints
-def check_unique_constraints(nums):
-    valid = True
-    for constraint in Board.UNIQUE_CONSTRAINTS:
-        valid = valid and constraint(nums)
-
-    return valid
 
 def check_dot_constraints_at(board, i, j):
     # A number at position i, j is constrained by dots at indices
@@ -162,6 +117,7 @@ def check_dot_constraints_at(board, i, j):
     
     return True
 
+# Checks if the assignment at i, j is valid
 def is_valid_at(board, i, j):
     if not check_dot_constraints_at(board, i, j):
         return False
@@ -240,7 +196,7 @@ def select_square_to_fill(board):
             elif ij_value_count == selection_value_count:
                 selections.append((i, j))
 
-    # Tiebreak via degree heuristic
+    # Tiebreak via degree heuristic (highest degree is selected)
     final_selections = []
     max_degree = -1
     for coord in selections:
@@ -254,8 +210,8 @@ def select_square_to_fill(board):
     # Arbitrary final tiebreak
     return random.choice(final_selections)
 
-# Forward check detects some early failures after
-# an assignment to position i, j
+# Forward check detects some early failures (empty domain)
+# after an assignment to position i, j
 def forward_check(board, i, j):
     # First check variables in the same row
     for jj in range(Board.DIMS[1]):
@@ -308,16 +264,17 @@ def solve_kropki(file_name):
     solved = solve_kropki_board(board)
     if solved is False:
         print("FAILURE")
-    else:
-        name, ext = file_name.split('.')
-        ext = '.' + ext
-        with open("Output" + name[-1] + ext, 'w') as output_file:
-            # Text processing
-            output_str = np.array2string(solved.nums) # Convert array to string
-            output_str = output_str.translate({ord(c) : None for c in "[]"}) # Remove array delimiters
-            output_str = '\n'.join([ line.strip() for line in output_str.splitlines() ]) # Strip spaces
+        return
+    
+    name, ext = file_name.split('.')
+    ext = '.' + ext
+    with open("Output" + name[-1] + ext, 'w') as output_file:
+        # Text processing
+        output_str = np.array2string(solved.nums) # Convert array to string
+        output_str = output_str.translate({ord(c) : None for c in "[]"}) # Remove array delimiters
+        output_str = '\n'.join([ line.strip() for line in output_str.splitlines() ]) # Strip spaces from each line
 
-            output_file.write(output_str)
+        output_file.write(output_str)
 
 if __name__ == "__main__":
     try:
