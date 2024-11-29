@@ -7,7 +7,6 @@ import random
 import numpy as np
 from itertools import product
 from copy import deepcopy
-import timeit
 
 # Vertical dot: |
 #               O
