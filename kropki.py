@@ -7,6 +7,7 @@ import random
 import numpy as np
 from itertools import product
 from copy import deepcopy
+import timeit
 
 # Vertical dot: |
 #               O
@@ -69,6 +70,11 @@ class Board:
         white_dot_constrant,
         black_dot_constraint
     )
+
+    def __init__(self, nums, vert_dots, horiz_dots):
+        self.nums = nums
+        self.vert_dots = vert_dots
+        self.horiz_dots = horiz_dots
 
 def check_unique_constraints_at(nums, i, j):
     if not check_row_constraint_at(nums, i):
@@ -208,7 +214,7 @@ def select_square_to_fill(board):
             final_selections.append(coord)
     
     # Arbitrary final tiebreak
-    return random.choice(final_selections)
+    return final_selections[0]
 
 # Forward check detects some early failures (empty domain)
 # after an assignment to position i, j
@@ -246,22 +252,21 @@ def solve_kropki_board(board):
 
 def solve_kropki(file_name):
     # 9x9
-    board = Board()
-    board.nums = np.loadtxt(
+    nums = np.loadtxt(
         file_name, dtype=int, delimiter=' ', usecols=range(Board.DIMS[1]), max_rows=Board.DIMS[0]
     )
 
     # 8x9
-    board.vert_dots = np.loadtxt(
+    vert_dots = np.loadtxt(
         file_name, dtype=int, delimiter=' ', skiprows=Board.DIMS[0] + 1, usecols=range(Board.DIMS[1] - 1), max_rows=Board.DIMS[0]
     )
 
     # 9x8
-    board.horiz_dots = np.loadtxt(
+    horiz_dots = np.loadtxt(
         file_name, dtype=int, delimiter=' ', skiprows=Board.DIMS[0] * 2 + 2, usecols=range(Board.DIMS[1]), max_rows=Board.DIMS[0] - 1
     )
 
-    solved = solve_kropki_board(board)
+    solved = solve_kropki_board(Board(nums, vert_dots, horiz_dots))
     if solved is False:
         print("FAILURE")
         return
