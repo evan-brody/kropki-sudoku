@@ -3,7 +3,6 @@
 # @brief    Solves a Kropki Sudoku board
 
 import sys
-import random
 import numpy as np
 from itertools import product
 from copy import deepcopy
