@@ -255,12 +255,12 @@ def solve_kropki(file_name):
         file_name, dtype=int, delimiter=' ', usecols=range(Board.DIMS[1]), max_rows=Board.DIMS[0]
     )
 
-    # 8x9
+    # 9x8
     vert_dots = np.loadtxt(
         file_name, dtype=int, delimiter=' ', skiprows=Board.DIMS[0] + 1, usecols=range(Board.DIMS[1] - 1), max_rows=Board.DIMS[0]
     )
 
-    # 9x8
+    # 8x9
     horiz_dots = np.loadtxt(
         file_name, dtype=int, delimiter=' ', skiprows=Board.DIMS[0] * 2 + 2, usecols=range(Board.DIMS[1]), max_rows=Board.DIMS[0] - 1
     )
