@@ -4,7 +4,7 @@
 
 import sys
 import numpy as np
-from itertools import product
+from itertools import product, chain
 from copy import deepcopy
 
 # Vertical dot: |
@@ -43,7 +43,7 @@ def check_column_constraint_at(nums, j):
 def check_grid_constraint_at(nums, m, n):
     # Indices m, n are in grid index m div 3, n div 3
     i, j = m // 3, n // 3
-    i *= 3; j *= 3 # Starting indices for that grid
+    i *= 3; j *= 3 # Starting indices for that grid (top-left)
 
     digit_count = [0] * 10
     for ii, jj in product(range(i, i + 3), range(j, j + 3)):
@@ -132,38 +132,33 @@ def is_valid_at(board, i, j):
     return True
 
 # Returns the degree of position i, j
+# i.e., the number of unassigned variables i, j constrains
 def get_degree(board, i, j):
-    degree = 0
+    if board.nums[i, j]:
+        raise Exception("get_degree() called on assigned variable.")
+    
+    # Degree starts at -1 to account for the fact that we will end up
+    # counting i, j as one of the variables we constrain
+    degree = -1
 
-    # A number at position i, j is constrained by dots at indices
-    # LEFT: i, j - 1; RIGHT: i, j (vertical dots)
-    # UP:   i - 1, j; DOWN:  i, j (horizontal dots)
-    if j - 1 > 0: # Ensure index within range
-        # Left vertical dot
-        # If there is a vertical dot to the left, and the position
-        # to the left is unassigned
-        if board.vert_dots[i, j - 1] and not board.nums[i, j - 1]:
+    # grid_i, grid_j are the coordinates of the upper-left corner of our 3x3 grid
+    grid_i, grid_j = (i // 3) * 3, (j // 3) * 3
+
+    # First check for unassigned variables in the same grid (including ourselves)
+    for ii, jj in product(range(grid_i, grid_i + 3), range(grid_j, grid_j + 3)):
+        if not board.nums[ii, jj]:
             degree += 1
-    
-    if j + 1 < Board.DIMS[1]:
-        # Right vertical dot
-        # If there is a vertical dot to the right, and the position
-        # to the left is unassigned
-        if board.vert_dots[i, j] and not board.nums[i, j + 1]:
+
+    # Then check for unassigned variables in the same column, excluding the grid
+    # Hold j fixed, vary ii
+    for ii in chain(range(0, grid_i), range(grid_i + 3, board.dims[0])):
+        if not board.nums[ii, j]:
             degree += 1
-    
-    if i - 1 > 0:
-        # Upper horizontal dot
-        # If there is a horizontal dot above, and the position
-        # above is unassigned
-        if board.horiz_dots[i - 1, j] and not board.nums[i - 1, j]:
-            degree += 1
-    
-    if i < Board.DIMS[0] - 1:
-        # Lower horizontal dot
-        # If there is a horizontal dot below, and the position
-        # below is unassigned
-        if board.horiz_dots[i, j] and not board.nums[i, j]:
+
+    # Then check for unassigned variables in the same row, excluding the grid
+    # Hold i fixed, vary jj
+    for jj in chain(range(0, grid_j), range(grid_j + 3, board.dims[1])):
+        if not board.nums[i, jj]:
             degree += 1
 
     return degree
@@ -172,9 +167,8 @@ def get_valid_domain(board, i, j):
     if board.nums[i, j]:
         raise Exception("Domain requested for assigned variable.")
     
-    start_valid = [1, 2, 3, 4, 5, 6, 7, 8, 9]
-    final_valid = set(start_valid)
-    for number in start_valid:
+    final_valid = set(range(1, 10))
+    for number in range(1, 10):
         board.nums[i, j] = number
         if not is_valid_at(board, i, j):
             final_valid.remove(number)
@@ -201,36 +195,37 @@ def select_square_to_fill(board):
                 selections.append((i, j))
 
     # Tiebreak via degree heuristic (highest degree is selected)
-    final_selections = []
+    # Final selection is not an array because we arbitrarily choose from variables with equal degree
+    final_selection = None
     max_degree = -1
     for coord in selections:
         coord_degree = get_degree(board, *coord)
         if coord_degree > max_degree:
             max_degree = coord_degree
-            final_selections = [coord]
-        elif coord_degree == max_degree:
-            final_selections.append(coord)
+            final_selection = coord
     
     # Arbitrary final tiebreak
-    return final_selections[0]
+    return final_selection
 
 # Forward check detects some early failures (empty domain)
 # after an assignment to position i, j
-def forward_check(board, i, j):
-    # First check variables in the same row
-    for jj in range(Board.DIMS[1]):
-        if not board.nums[i, jj] and not count_valid_values(board, i, jj):
-            return False
-    
-    # Then in the same column
-    for ii in range(Board.DIMS[0]):
-        if not board.nums[ii, j] and not count_valid_values(board, ii, j):
-            return False
-    
-    # Then in the same grid
-    grid_i, grid_j = i // 3, j // 3
+def forward_check(board, i, j):    
+    # First check variables in the same grid
+    grid_i, grid_j = (i // 3) * 3, (j // 3) * 3
     for ii, jj in product(range(grid_i, grid_i + 3), range(grid_j, grid_j + 3)):
         if not board.nums[ii, jj] and not count_valid_values(board, ii, jj):
+            return False
+
+    # Then in the same column, excluding the grid
+    # Hold j fixed, vary ii
+    for ii in chain(range(0, grid_i), range(grid_i + 3, board.dims[0])):
+        if not board.nums[ii, j] and not count_valid_values(board, ii, j):
+            return False
+
+    # Then in the same row, excluding the grid
+    # Hold i fixed, vary jj
+    for jj in chain(range(0, grid_j), range(grid_j + 3, board.dims[1])):
+        if not board.nums[i, jj] and not count_valid_values(board, i, jj):
             return False
         
     return True
