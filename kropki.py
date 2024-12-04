@@ -138,7 +138,29 @@ def get_degree(board, i, j):
     if board.nums[i, j]:
         raise Exception("get_degree() called on assigned variable.")
     
-    degree = 0
+    # Degree starts at -1 to account for the fact that we will end up
+    # counting i, j as one of the variables we constrain
+    degree = -1
+
+    # grid_i, grid_j are the coordinates of the upper-left corner of our 3x3 grid
+    grid_i, grid_j = (i // 3) * 3, (j // 3) * 3
+
+    # First check for unassigned variables in the same grid (including ourselves)
+    for ii, jj in product(range(grid_i, grid_i + 3), range(grid_j, grid_j + 3)):
+        if not board.nums[ii, jj]:
+            degree += 1
+
+    # Then check for unassigned variables in the same column, excluding the grid
+    # Hold j fixed, vary ii
+    for ii in chain(range(0, grid_i), range(grid_i + 3, board.nums.shape[0])):
+        if not board.nums[ii, j]:
+            degree += 1
+
+    # Then check for unassigned variables in the same row, excluding the grid
+    # Hold i fixed, vary jj
+    for jj in chain(range(0, grid_j), range(grid_j + 3, board.nums.shape[1])):
+        if not board.nums[i, jj]:
+            degree += 1
 
     # A number at position i, j is constrained by dots at indices
     # LEFT: i, j - 1; RIGHT: i, j (vertical dots)
@@ -241,8 +263,6 @@ def forward_check(board, i, j):
     return True
 
 def solve_kropki_board(board):
-    os.system("cls")
-    print(board.nums)
     if board.nums.all(): return board # Complete assignment. Must be valid
     var = select_square_to_fill(board) # var is a tuple (i, j)
     for value in get_valid_domain(board, *var):
@@ -285,6 +305,8 @@ def solve_kropki(file_name):
         output_str = '\n'.join([ line.strip() for line in output_str.splitlines() ]) # Strip spaces from each line
 
         output_file.write(output_str)
+        print("Solution:")
+        print(output_str)
 
 if __name__ == "__main__":
     try:
