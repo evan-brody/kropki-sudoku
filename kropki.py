@@ -2,6 +2,7 @@
 # @author   Evan Brody
 # @brief    Solves a Kropki Sudoku board
 
+import os
 import sys
 import numpy as np
 from itertools import product, chain
@@ -137,28 +138,37 @@ def get_degree(board, i, j):
     if board.nums[i, j]:
         raise Exception("get_degree() called on assigned variable.")
     
-    # Degree starts at -1 to account for the fact that we will end up
-    # counting i, j as one of the variables we constrain
-    degree = -1
+    degree = 0
 
-    # grid_i, grid_j are the coordinates of the upper-left corner of our 3x3 grid
-    grid_i, grid_j = (i // 3) * 3, (j // 3) * 3
-
-    # First check for unassigned variables in the same grid (including ourselves)
-    for ii, jj in product(range(grid_i, grid_i + 3), range(grid_j, grid_j + 3)):
-        if not board.nums[ii, jj]:
+    # A number at position i, j is constrained by dots at indices
+    # LEFT: i, j - 1; RIGHT: i, j (vertical dots)
+    # UP:   i - 1, j; DOWN:  i, j (horizontal dots)
+    if j - 1 > 0: # Ensure index within range
+        # Left vertical dot
+        # If there is a vertical dot to the left, and the position
+        # to the left is unassigned
+        if board.vert_dots[i, j - 1] and not board.nums[i, j - 1]:
             degree += 1
-
-    # Then check for unassigned variables in the same column, excluding the grid
-    # Hold j fixed, vary ii
-    for ii in chain(range(0, grid_i), range(grid_i + 3, board.dims[0])):
-        if not board.nums[ii, j]:
+    
+    if j + 1 < Board.DIMS[1]:
+        # Right vertical dot
+        # If there is a vertical dot to the right, and the position
+        # to the left is unassigned
+        if board.vert_dots[i, j] and not board.nums[i, j + 1]:
             degree += 1
-
-    # Then check for unassigned variables in the same row, excluding the grid
-    # Hold i fixed, vary jj
-    for jj in chain(range(0, grid_j), range(grid_j + 3, board.dims[1])):
-        if not board.nums[i, jj]:
+    
+    if i - 1 > 0:
+        # Upper horizontal dot
+        # If there is a horizontal dot above, and the position
+        # above is unassigned
+        if board.horiz_dots[i - 1, j] and not board.nums[i - 1, j]:
+            degree += 1
+    
+    if i < Board.DIMS[0] - 1:
+        # Lower horizontal dot
+        # If there is a horizontal dot below, and the position
+        # below is unassigned
+        if board.horiz_dots[i, j] and not board.nums[i, j]:
             degree += 1
 
     return degree
@@ -218,24 +228,26 @@ def forward_check(board, i, j):
 
     # Then in the same column, excluding the grid
     # Hold j fixed, vary ii
-    for ii in chain(range(0, grid_i), range(grid_i + 3, board.dims[0])):
+    for ii in chain(range(0, grid_i), range(grid_i + 3, board.nums.shape[0])):
         if not board.nums[ii, j] and not count_valid_values(board, ii, j):
             return False
 
     # Then in the same row, excluding the grid
     # Hold i fixed, vary jj
-    for jj in chain(range(0, grid_j), range(grid_j + 3, board.dims[1])):
+    for jj in chain(range(0, grid_j), range(grid_j + 3, board.nums.shape[1])):
         if not board.nums[i, jj] and not count_valid_values(board, i, jj):
             return False
         
     return True
 
 def solve_kropki_board(board):
+    os.system("cls")
+    print(board.nums)
     if board.nums.all(): return board # Complete assignment. Must be valid
     var = select_square_to_fill(board) # var is a tuple (i, j)
     for value in get_valid_domain(board, *var):
         board.nums[var] = value
-        if forward_check(board, *var): # Inference
+        if True or forward_check(board, *var): # Inference
             result = solve_kropki_board(deepcopy(board))
             if type(result) != bool: return result # False indicates failure
         
